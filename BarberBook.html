@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BarberBook">
+<title>BarberBook</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f0f0eb; color: #222; }
+
+/* WEEK BAR */
+#weekBar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 6px; background: #fff; border-bottom: 2px solid #ddd;
+  position: sticky; top: 0; z-index: 20;
+}
+.arrowBtn {
+  background: none; border: 1px solid #ccc; border-radius: 6px;
+  font-size: 20px; width: 32px; height: 32px; cursor: pointer;
+  flex-shrink: 0; color: #444;
+}
+#weekDays { display: flex; gap: 2px; flex: 1; justify-content: center; }
+.dayPill {
+  display: flex; flex-direction: column; align-items: center;
+  background: none; border: 1px solid #ddd; border-radius: 8px;
+  padding: 3px 5px; cursor: pointer; min-width: 36px;
+}
+.dayPill.selected { background: #2a7a4b; border-color: #2a7a4b; }
+.dayPill.istoday:not(.selected) { background: #e8f5ee; border-color: #2a7a4b; }
+.dayShort { font-size: 9px; color: #888; text-transform: uppercase; }
+.dayPill.selected .dayShort, .dayPill.selected .dayNum { color: #fff; }
+.dayNum { font-size: 14px; font-weight: 700; color: #222; }
+.daydot { width: 5px; height: 5px; border-radius: 50%; background: #2a7a4b; margin-top: 1px; }
+.dayPill.selected .daydot { background: #fff; }
+
+/* TITLE */
+#titleRow {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; background: #fff; border-bottom: 2px solid #444;
+}
+#titleText { font-size: 16px; font-weight: 800; }
+#counts { display: flex; gap: 6px; }
+.countBadge { font-size: 11px; color: #555; background: #f0f0eb; padding: 3px 8px; border-radius: 20px; border: 1px solid #ddd; }
+
+/* TABLE */
+#tableWrap { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+thead th {
+  padding: 10px 4px; background: #e0e0e0;
+  text-align: center; font-size: 15px; font-weight: 800;
+  border-bottom: 2px solid #555;
+  position: sticky; top: 0; z-index: 10;
+}
+th.thFab { width: 41%; border-right: 2px solid #555; }
+th.thTime { width: 18%; background: #d0d0d0; }
+th.thGia { width: 41%; border-left: 2px solid #555; }
+td { padding: 0; vertical-align: middle; border-bottom: 1px solid #ddd; height: 48px; cursor: pointer; }
+td.tdTime { text-align: center; font-size: 13px; font-weight: 700; background: #e8e8e8; cursor: default; border-left: 1px solid #bbb; border-right: 1px solid #bbb; }
+td.tdFab { border-right: 2px solid #bbb; text-align: center; }
+td.tdGia { border-left: 2px solid #bbb; text-align: center; }
+tr.rowAlt td { background: #fafafa; }
+tr.rowAlt td.tdTime { background: #e2e2e2; }
+.apptCard { font-weight: 700; font-size: 13px; padding: 6px 4px; border-radius: 4px; margin: 2px 3px; }
+.apptFab { background: #d4edda; color: #155724; }
+.apptGia { background: #cce5ff; color: #004085; }
+.apptNote { font-weight: 400; font-size: 10px; color: #555; display: block; }
+.emptyCell { color: #ccc; font-size: 22px; }
+.breakCell { text-align: center; padding: 7px; font-size: 11px; color: #888; letter-spacing: 2px; text-transform: uppercase; background: #efefea !important; border-top: 2px solid #ccc; border-bottom: 2px solid #ccc; cursor: default; }
+
+/* MODAL */
+#overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: flex-end; justify-content: center; z-index: 100; }
+#overlay.open { display: flex; }
+#modal { background: #fff; border-radius: 18px 18px 0 0; padding: 16px 20px 40px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
+.modalHandle { width: 40px; height: 4px; background: #ddd; border-radius: 2px; margin: 0 auto 14px; }
+.modalTop { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.modalTitle { font-size: 17px; font-weight: 800; }
+.xBtn { background: none; border: none; font-size: 22px; cursor: pointer; color: #aaa; }
+.mRow { margin-bottom: 12px; }
+.mLabel { display: block; font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+.mInput { width: 100%; border: 1.5px solid #e0e0e0; border-radius: 10px; padding: 11px 13px; font-size: 16px; font-family: inherit; outline: none; background: #fafafa; }
+.mInput:focus { border-color: #2a7a4b; background: #fff; }
+.segmented { display: flex; gap: 8px; }
+.segBtn { flex: 1; padding: 11px; border: 1.5px solid #e0e0e0; border-radius: 10px; background: #fafafa; cursor: pointer; font-size: 15px; font-weight: 700; font-family: inherit; }
+.segBtn.active { background: #2a7a4b; color: #fff; border-color: #2a7a4b; }
+.mActions { display: flex; gap: 8px; margin-top: 16px; }
+.saveBtn { flex: 1; background: #2a7a4b; color: #fff; border: none; border-radius: 12px; padding: 14px; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; }
+.cancelBtn { background: #f0f0f0; color: #444; border: none; border-radius: 12px; padding: 14px 18px; font-size: 15px; cursor: pointer; font-family: inherit; }
+.delBtn { background: #fff0f0; color: #c0392b; border: 1.5px solid #f5c6c6; border-radius: 12px; padding: 14px; font-size: 15px; cursor: pointer; font-family: inherit; }
+
+/* TOAST */
+#toast { display: none; position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); background: #2a7a4b; color: #fff; border-radius: 12px; padding: 12px 26px; font-size: 14px; font-weight: 700; z-index: 300; white-space: nowrap; }
+#toast.show { display: block; }
+#toast.err { background: #c0392b; }
+</style>
+</head>
+<body>
+
+<div id="weekBar">
+  <button class="arrowBtn" id="btnPrev">‹</button>
+  <div id="weekDays"></div>
+  <button class="arrowBtn" id="btnNext">›</button>
+</div>
+
+<div id="titleRow">
+  <span id="titleText"></span>
+  <div id="counts"></div>
+</div>
+
+<div id="tableWrap">
+  <table>
+    <thead>
+      <tr>
+        <th class="thFab">Fabrizio</th>
+        <th class="thTime">Ora</th>
+        <th class="thGia">Gianluca</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+<div id="overlay">
+  <div id="modal">
+    <div class="modalHandle"></div>
+    <div class="modalTop">
+      <span class="modalTitle" id="modalTitle">Nuovo Appuntamento</span>
+      <button class="xBtn" id="btnClose">✕</button>
+    </div>
+    <div class="mRow">
+      <label class="mLabel">Barbiere</label>
+      <div class="segmented">
+        <button class="segBtn" id="btnFab">Fabrizio</button>
+        <button class="segBtn" id="btnGia">Gianluca</button>
+      </div>
+    </div>
+    <div class="mRow">
+      <label class="mLabel">Data</label>
+      <input class="mInput" type="date" id="fDate">
+    </div>
+    <div class="mRow">
+      <label class="mLabel">Orario</label>
+      <select class="mInput" id="fTime"></select>
+    </div>
+    <div class="mRow">
+      <label class="mLabel">Nome cliente *</label>
+      <input class="mInput" type="text" id="fName" placeholder="Es. Mario Rossi" autocomplete="off">
+    </div>
+    <div class="mRow">
+      <label class="mLabel">Note (opzionale)</label>
+      <input class="mInput" type="text" id="fNote" placeholder="Es. taglio + barba" autocomplete="off">
+    </div>
+    <div class="mActions">
+      <button class="delBtn" id="delBtn">🗑</button>
+      <button class="cancelBtn" id="btnCancel">Annulla</button>
+      <button class="saveBtn" id="btnSave">Salva</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+var STORAGE_KEY = "barber_v5";
+var DAYS_LONG  = ["Domenica","Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato"];
+var MONTHS     = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
+var DAYS_SHORT = ["Dom","Lun","Mar","Mer","Gio","Ven","Sab"];
+
+/* Genera slot orari */
+var SLOTS = (function(){
+  var s = [];
+  function add(sh,sm,eh,em){
+    var h=sh, m=sm;
+    while(h<eh || (h===eh && m<=em)){
+      s.push( (h<10?'0':'')+h+':'+(m<10?'0':'')+m );
+      m+=30; if(m>=60){m-=60;h++;}
+    }
+  }
+  add(9,0,13,0);
+  add(14,30,18,30);
+  return s;
+})();
+
+function dateKey(d){ return d.getFullYear()+'-'+(d.getMonth()<9?'0':'')+(d.getMonth()+1)+'-'+(d.getDate()<10?'0':'')+d.getDate(); }
+function todayKey(){ return dateKey(new Date()); }
+
+function loadData(){ try{ var v=localStorage.getItem(STORAGE_KEY); return v?JSON.parse(v):{};} catch(e){return{};} }
+function saveData(d){ try{ localStorage.setItem(STORAGE_KEY,JSON.stringify(d));} catch(e){} }
+
+var appts = loadData();
+var selectedDate = todayKey();
+var weekBase = new Date();
+var editingId = null;
+var currentBarber = 'fabrizio';
+
+/* Settimana */
+function getWeekDates(base){
+  var d = new Date(base.getFullYear(), base.getMonth(), base.getDate());
+  var day = d.getDay();
+  var mon = new Date(d);
+  mon.setDate(d.getDate() - ((day+6)%7));
+  var arr = [];
+  for(var i=0;i<7;i++){
+    var dd = new Date(mon);
+    dd.setDate(mon.getDate()+i);
+    arr.push(dd);
+  }
+  return arr;
+}
+
+function renderWeek(){
+  var today = todayKey();
+  var dates = getWeekDates(weekBase);
+  var wrap = document.getElementById('weekDays');
+  wrap.innerHTML = '';
+  for(var i=0;i<dates.length;i++){
+    (function(d){
+      var k = dateKey(d);
+      var cnt = (appts[k]||[]).length;
+      var btn = document.createElement('button');
+      var cls = 'dayPill';
+      if(k===selectedDate) cls+=' selected';
+      else if(k===today) cls+=' istoday';
+      btn.className = cls;
+      btn.innerHTML =
+        '<span class="dayShort">'+DAYS_SHORT[d.getDay()]+'</span>'+
+        '<span class="dayNum">'+d.getDate()+'</span>'+
+        (cnt>0?'<span class="daydot"></span>':'');
+      btn.onclick = function(){ selectedDate=k; renderAll(); };
+      wrap.appendChild(btn);
+    })(dates[i]);
+  }
+}
+
+/* Tabella */
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function renderTable(){
+  var day = appts[selectedDate]||[];
+  var fabN=0, giaN=0;
+  for(var i=0;i<day.length;i++){
+    if(day[i].barber==='fabrizio') fabN++;
+    else giaN++;
+  }
+  var d = new Date(selectedDate+'T12:00:00');
+  document.getElementById('titleText').textContent = DAYS_LONG[d.getDay()]+' '+d.getDate()+' '+MONTHS[d.getMonth()];
+  document.getElementById('counts').innerHTML =
+    '<span class="countBadge">Fabrizio: <b>'+fabN+'</b></span>'+
+    '<span class="countBadge">Gianluca: <b>'+giaN+'</b></span>';
+
+  var tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+
+  for(var si=0; si<SLOTS.length; si++){
+    (function(slot, idx){
+      /* Separatore pausa */
+      if(slot==='14:30'){
+        var br = tbody.insertRow();
+        var btd = br.insertCell();
+        btd.colSpan=3;
+        btd.className='breakCell';
+        btd.textContent='☕  Pausa pranzo  13:30 – 14:30';
+      }
+
+      var fab=null, gia=null;
+      for(var j=0;j<day.length;j++){
+        if(day[j].time===slot && day[j].barber==='fabrizio') fab=day[j];
+        if(day[j].time===slot && day[j].barber==='gianluca') gia=day[j];
+      }
+
+      var tr = tbody.insertRow();
+      if(idx%2!==0) tr.className='rowAlt';
+
+      /* Fabrizio */
+      var tdF = tr.insertCell();
+      tdF.className='tdFab';
+      if(fab){
+        tdF.innerHTML='<div class="apptCard apptFab">'+esc(fab.name)+(fab.note?'<span class="apptNote">'+esc(fab.note)+'</span>':'')+'</div>';
+        (function(a){ tdF.onclick=function(){ openEdit(a); }; })(fab);
+      } else {
+        tdF.innerHTML='<div class="emptyCell">+</div>';
+        (function(s){ tdF.onclick=function(){ openNew(s,'fabrizio'); }; })(slot);
+      }
+
+      /* Ora */
+      var tdT = tr.insertCell();
+      tdT.className='tdTime';
+      tdT.innerHTML='<b>'+slot+'</b>';
+
+      /* Gianluca */
+      var tdG = tr.insertCell();
+      tdG.className='tdGia';
+      if(gia){
+        tdG.innerHTML='<div class="apptCard apptGia">'+esc(gia.name)+(gia.note?'<span class="apptNote">'+esc(gia.note)+'</span>':'')+'</div>';
+        (function(a){ tdG.onclick=function(){ openEdit(a); }; })(gia);
+      } else {
+        tdG.innerHTML='<div class="emptyCell">+</div>';
+        (function(s){ tdG.onclick=function(){ openNew(s,'gianluca'); }; })(slot);
+      }
+    })(SLOTS[si], si);
+  }
+}
+
+function renderAll(){ renderWeek(); renderTable(); }
+
+/* Modal */
+function buildSlots(sel){
+  var el=document.getElementById('fTime');
+  el.innerHTML='';
+  for(var i=0;i<SLOTS.length;i++){
+    var o=document.createElement('option');
+    o.value=SLOTS[i]; o.textContent=SLOTS[i];
+    if(SLOTS[i]===sel) o.selected=true;
+    el.appendChild(o);
+  }
+}
+
+function selectBarber(id){
+  currentBarber=id;
+  document.getElementById('btnFab').className='segBtn'+(id==='fabrizio'?' active':'');
+  document.getElementById('btnGia').className='segBtn'+(id==='gianluca'?' active':'');
+}
+
+function openNew(slot,barber){
+  editingId=null;
+  document.getElementById('modalTitle').textContent='Nuovo Appuntamento';
+  document.getElementById('fName').value='';
+  document.getElementById('fNote').value='';
+  document.getElementById('fDate').value=selectedDate;
+  document.getElementById('btnSave').textContent='Salva';
+  document.getElementById('delBtn').style.display='none';
+  buildSlots(slot);
+  selectBarber(barber);
+  document.getElementById('overlay').className='open';
+  setTimeout(function(){ document.getElementById('fName').focus(); },200);
+}
+
+function openEdit(appt){
+  editingId=appt.id;
+  document.getElementById('modalTitle').textContent='Modifica Appuntamento';
+  document.getElementById('fName').value=appt.name;
+  document.getElementById('fNote').value=appt.note||'';
+  document.getElementById('fDate').value=appt.date;
+  document.getElementById('btnSave').textContent='Aggiorna';
+  document.getElementById('delBtn').style.display='';
+  buildSlots(appt.time);
+  selectBarber(appt.barber);
+  document.getElementById('overlay').className='open';
+}
+
+function closeModal(){ document.getElementById('overlay').className=''; }
+
+function saveAppt(){
+  var name=document.getElementById('fName').value.trim();
+  if(!name){ showToast('⚠️ Inserisci il nome',true); return; }
+  var date=document.getElementById('fDate').value;
+  var time=document.getElementById('fTime').value;
+  var note=document.getElementById('fNote').value.trim();
+  var barber=currentBarber;
+  if(!appts[date]) appts[date]=[];
+  /* rimuovi vecchio se modifica */
+  if(editingId){
+    for(var k in appts){
+      appts[k]=appts[k].filter(function(a){ return a.id!==editingId; });
+      if(!appts[k].length) delete appts[k];
+    }
+    if(!appts[date]) appts[date]=[];
+  }
+  /* controlla conflitto */
+  var conflict=false;
+  for(var j=0;j<appts[date].length;j++){
+    if(appts[date][j].time===time && appts[date][j].barber===barber){ conflict=true; break; }
+  }
+  if(conflict){ showToast('⚠️ Slot già occupato!',true); return; }
+  appts[date].push({ id: editingId||String(Date.now()), name:name, note:note, date:date, time:time, barber:barber });
+  saveData(appts);
+  closeModal();
+  renderAll();
+  showToast(editingId?'✓ Aggiornato':'✓ Salvato');
+}
+
+function deleteAppt(){
+  if(!editingId) return;
+  if(!confirm('Eliminare questo appuntamento?')) return;
+  for(var k in appts){
+    appts[k]=appts[k].filter(function(a){ return a.id!==editingId; });
+    if(!appts[k].length) delete appts[k];
+  }
+  saveData(appts);
+  closeModal();
+  renderAll();
+  showToast('Eliminato');
+}
+
+/* Toast */
+var _tt;
+function showToast(msg,err){
+  var t=document.getElementById('toast');
+  t.textContent=msg; t.className='show'+(err?' err':'');
+  clearTimeout(_tt); _tt=setTimeout(function(){ t.className=''; },2400);
+}
+
+/* Event listeners */
+document.getElementById('btnPrev').onclick = function(){ weekBase.setDate(weekBase.getDate()-7); renderAll(); };
+document.getElementById('btnNext').onclick = function(){ weekBase.setDate(weekBase.getDate()+7); renderAll(); };
+document.getElementById('btnClose').onclick = closeModal;
+document.getElementById('btnCancel').onclick = closeModal;
+document.getElementById('btnSave').onclick = saveAppt;
+document.getElementById('delBtn').onclick = deleteAppt;
+document.getElementById('btnFab').onclick = function(){ selectBarber('fabrizio'); };
+document.getElementById('btnGia').onclick = function(){ selectBarber('gianluca'); };
+document.getElementById('overlay').onclick = function(e){ if(e.target===this) closeModal(); };
+document.addEventListener('keydown', function(e){
+  if(e.key==='Escape') closeModal();
+});
+
+/* Avvia */
+renderAll();
+</script>
+</body>
+</html>
